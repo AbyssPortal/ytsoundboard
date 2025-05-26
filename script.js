@@ -69,15 +69,16 @@ async function getAudioFile(id) {
 const audioFileInput = document.getElementById('audioFileInput');
 document.getElementById('addAudioBtn').onclick = async function () {
     const file = audioFileInput.files[0];
+    const labelInput = document.getElementById('audioLabelInput');
+    const label = labelInput.value.trim() || (file ? file.name.replace(/\.[^/.]+$/, "") : "");
     if (!file) { alert('No file selected!'); return; }
-    const label = prompt('Enter a label for this sound:', file.name.replace(/\.[^/.]+$/, ""));
-    if (!label) return;
     try {
         const id = await saveAudioFile(file, label);
         soundboard.push({ type: 'local', audioId: id, label });
         saveSoundboard();
         renderSoundboard();
         audioFileInput.value = '';
+        if (labelInput) labelInput.value = '';
     } catch (err) {
         alert('Failed to save audio: ' + err);
     }

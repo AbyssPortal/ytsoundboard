@@ -327,3 +327,4 @@ function addImportExportUI() {
 loadSoundboard();
 renderSoundboard();
 addImportExportUI();
+document.getElementById('stopAllBtn').onclick = stopCurrentSound;

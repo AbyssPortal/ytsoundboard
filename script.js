@@ -161,6 +161,7 @@ function playClip(item, idx) {
                     if (event.data === YT.PlayerState.ENDED) {
                         // Don't delete the iframe, just hide the player if not in debug mode
                         if (!is_debug) playerDiv.style.display = 'none';
+                        currentlyPlayingIdx = null;
                         // ytPlayerReady = true;
                     }
                 }

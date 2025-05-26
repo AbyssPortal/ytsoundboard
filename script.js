@@ -66,9 +66,15 @@ function renderSoundboard() {
 
 let ytPlayer;
 let ytPlayerReady = false;
+let currentlyPlayingIdx = null;
 // Debug flag
 const is_debug = false; // Set to false to hide the player
 function playClip(item, idx) {
+    if (currentlyPlayingIdx === idx && window.ytPlayer && ytPlayerReady) {
+        stopCurrentSound();
+        return;
+    }
+    currentlyPlayingIdx = idx;
     const playerDiv = document.getElementById('player');
     const errorDivId = 'yt-error-msg';
     // Remove any previous error
@@ -186,6 +192,15 @@ function playClip(item, idx) {
         document.body.appendChild(err);
         setTimeout(() => { if (err.parentNode) err.parentNode.removeChild(err); }, 4000);
     }
+}
+
+function stopCurrentSound() {
+    if (window.ytPlayer && ytPlayerReady) {
+        try {
+            window.ytPlayer.stopVideo();
+        } catch (err) {}
+    }
+    currentlyPlayingIdx = null;
 }
 
 // Parse timestamp in hh:mm:ss, mm:ss, or ss format

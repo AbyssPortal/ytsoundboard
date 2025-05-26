@@ -27,6 +27,62 @@ function extractVideoId(url) {
     return match ? match[1] : null;
 }
 
+// IndexedDB helpers for storing audio files
+const DB_NAME = 'SoundboardAudioDB';
+const DB_STORE = 'audioFiles';
+function openAudioDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = function (e) {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(DB_STORE)) {
+                db.createObjectStore(DB_STORE, { keyPath: 'id', autoIncrement: true });
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function saveAudioFile(file, label) {
+    const db = await openAudioDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        const store = tx.objectStore(DB_STORE);
+        const entry = { label, name: file.name, type: file.type, data: file };
+        const req = store.add(entry);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function getAudioFile(id) {
+    const db = await openAudioDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, 'readonly');
+        const store = tx.objectStore(DB_STORE);
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// Add audio file to soundboard
+const audioFileInput = document.getElementById('audioFileInput');
+document.getElementById('addAudioBtn').onclick = async function () {
+    const file = audioFileInput.files[0];
+    if (!file) { alert('No file selected!'); return; }
+    const label = prompt('Enter a label for this sound:', file.name.replace(/\.[^/.]+$/, ""));
+    if (!label) return;
+    try {
+        const id = await saveAudioFile(file, label);
+        soundboard.push({ type: 'local', audioId: id, label });
+        saveSoundboard();
+        renderSoundboard();
+        audioFileInput.value = '';
+    } catch (err) {
+        alert('Failed to save audio: ' + err);
+    }
+};
+
 function renderSoundboard() {
     const board = document.getElementById('soundboard');
     board.innerHTML = '';
@@ -38,7 +94,9 @@ function renderSoundboard() {
         // Sound button
         const btn = document.createElement('button');
         btn.className = 'sound-btn';
-        btn.innerHTML = `<span>${item.label || 'Sound ' + (idx + 1)}</span><button class='remove-btn' title='Remove'>&times;</button>`;
+        let label = item.label || 'Sound ' + (idx + 1);
+        if (item.type === 'local') label += ' (file)';
+        btn.innerHTML = `<span>${label}</span><button class='remove-btn' title='Remove'>&times;</button>`;
         btn.onclick = (e) => {
             if (e.target.classList.contains('remove-btn')) {
                 soundboard.splice(idx, 1);
@@ -67,9 +125,15 @@ function renderSoundboard() {
 let ytPlayer;
 let ytPlayerReady = false;
 let currentlyPlayingIdx = null;
+let currentAudio = null;
 // Debug flag
 const is_debug = false; // Set to false to hide the player
 function playClip(item, idx) {
+    stop_any_playing();
+    if (item.type === 'local') {
+        playLocalAudio(item, idx);
+        return;
+    }
     if (currentlyPlayingIdx === idx && window.ytPlayer && ytPlayerReady) {
         stopCurrentSound();
         return;
@@ -195,13 +259,37 @@ function playClip(item, idx) {
     }
 }
 
-function stopCurrentSound() {
+function playLocalAudio(item, idx) {
+    stop_any_playing();
+    currentlyPlayingIdx = idx;
+    getAudioFile(item.audioId).then(entry => {
+        if (!entry) { alert('Audio not found!'); return; }
+        const url = URL.createObjectURL(entry.data);
+        const audio = new Audio(url);
+        audio.volume = (item.volume !== undefined ? item.volume : 100) / 100;
+        audio.onended = () => {
+            currentlyPlayingIdx = null;
+            URL.revokeObjectURL(url);
+        };
+        audio.play();
+        currentAudio = audio;
+    });
+}
+
+function stop_any_playing() {
     if (window.ytPlayer && ytPlayerReady) {
-        try {
-            window.ytPlayer.stopVideo();
-        } catch (err) {}
+        try { window.ytPlayer.stopVideo(); } catch (err) {}
+    }
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
     }
     currentlyPlayingIdx = null;
+}
+
+function stopCurrentSound() {
+    stop_any_playing();
 }
 
 // Parse timestamp in hh:mm:ss, mm:ss, or ss format

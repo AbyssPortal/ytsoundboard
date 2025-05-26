@@ -23,12 +23,16 @@
     <div class="container">
         <h1>YouTube Soundboard</h1>
         <form id="addForm" autocomplete="off">
-            <input type="text" id="ytLink" placeholder="YouTube Link" required autocomplete="off">
-            <input type="number" id="startTime" placeholder="Start (sec)" min="0" required autocomplete="off">
-            <input type="number" id="endTime" placeholder="End (sec)" min="0" required autocomplete="off">
+            <input type="text" id="ytLink" placeholder="YouTube Link" autocomplete="off">
+            <input type="number" id="startTime" placeholder="Start (sec)" min="0" autocomplete="off">
+            <input type="number" id="endTime" placeholder="End (sec)" min="0" autocomplete="off">
             <input type="text" id="label" placeholder="Label (optional)" autocomplete="off">
             <button type="submit">Add</button>
         </form>
+        <div style="margin-bottom:16px;">
+            <input type="file" id="audioFileInput" accept="audio/*" style="display:inline-block;">
+            <button id="addAudioBtn" type="button">Add Sound File</button>
+        </div>
         <button id="stopAllBtn" style="width:100%;margin-bottom:16px;background:#444;">Stop Sounds</button>
         <div class="soundboard" id="soundboard"></div>
         <div id="player" style="display:none;"></div>

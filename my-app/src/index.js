@@ -12,7 +12,7 @@ function createWindow() {
     }
   });
   win.setMenuBarVisibility(false);
-  win.loadFile('index.html');
+  win.loadFile('src/index.html');
 }
 
 app.whenReady().then(() => {

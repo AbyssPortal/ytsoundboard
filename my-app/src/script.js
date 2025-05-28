@@ -413,8 +413,85 @@ function addImportExportUI() {
     container.insertBefore(controls, container.firstChild);
 }
 
+// NUMPAD BINDINGS
+const NUMPAD_KEYS = [
+    'Numpad7','Numpad8','Numpad9',
+    'Numpad4','Numpad5','Numpad6',
+    'Numpad1','Numpad2','Numpad3',
+    'Numpad0','NumpadDecimal','NumpadEnter'
+];
+const NUMPAD_LABELS = ['7','8','9','4','5','6','1','2','3','0','.','Enter'];
+let numpadBindings = {};
+
+function saveNumpadBindings() {
+    setCookie('ytNumpadBindings', JSON.stringify(numpadBindings));
+}
+function loadNumpadBindings() {
+    const data = getCookie('ytNumpadBindings');
+    if (data) {
+        try { numpadBindings = JSON.parse(data); } catch {}
+    }
+}
+
+function renderNumpadGrid() {
+    const grid = document.getElementById('numpad-grid');
+    grid.innerHTML = '';
+    NUMPAD_KEYS.forEach((key, i) => {
+        const btn = document.createElement('button');
+        btn.textContent = NUMPAD_LABELS[i];
+        btn.style.height = '40px';
+        btn.style.fontWeight = 'bold';
+        btn.style.background = numpadBindings[key] !== undefined ? '#ff5252' : '#333';
+        btn.style.color = '#fff';
+        btn.style.border = '1px solid #444';
+        btn.style.borderRadius = '6px';
+        btn.style.cursor = 'pointer';
+        btn.title = numpadBindings[key] !== undefined ? `Bound to sound #${numpadBindings[key]+1}` : 'Unbound';
+        btn.onclick = () => {
+            // Open a selector to bind/unbind
+            openNumpadBindDialog(key);
+        };
+        grid.appendChild(btn);
+    });
+}
+
+function openNumpadBindDialog(numpadKey) {
+    // Show a prompt to select a sound or unbind
+    let msg = 'Bind numpad key ' + NUMPAD_LABELS[NUMPAD_KEYS.indexOf(numpadKey)] + ' to which sound? (1-' + soundboard.length + ', 0 to unbind)';
+    let current = numpadBindings[numpadKey];
+    let input = prompt(msg, current !== undefined ? (current+1) : '');
+    if (input === null) return;
+    let idx = parseInt(input, 10);
+    if (isNaN(idx) || idx < 0 || idx > soundboard.length) return;
+    if (idx === 0) {
+        delete numpadBindings[numpadKey];
+    } else {
+        numpadBindings[numpadKey] = idx-1;
+    }
+    saveNumpadBindings();
+    renderNumpadGrid();
+}
+
+// Listen for numpad keydown globally
+window.addEventListener('keydown', function(e) {
+    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+    if (numpadBindings[e.code] !== undefined && soundboard[numpadBindings[e.code]]) {
+        playClip(soundboard[numpadBindings[e.code]], numpadBindings[e.code]);
+        e.preventDefault();
+    }
+});
+
 // Init
 loadSoundboard();
 renderSoundboard();
 addImportExportUI();
 document.getElementById('stopAllBtn').onclick = stopCurrentSound;
+loadNumpadBindings();
+renderNumpadGrid();
+
+// Also call renderNumpadGrid() after renderSoundboard() to update UI if sounds change
+const origRenderSoundboard = renderSoundboard;
+renderSoundboard = function() {
+    origRenderSoundboard.apply(this, arguments);
+    renderNumpadGrid();
+};
